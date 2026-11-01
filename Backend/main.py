@@ -22,20 +22,28 @@ app.add_middleware(
 
 ROLES = [
     {
-        'id': 'frontend-engineer',
-        'name': 'Frontend Engineer',
+        'id': 'frontend-developer',
+        'name': 'Frontend Developer',
         'category': 'Engineering',
         'description': 'Build modern web applications with performance, accessibility, and UI quality in focus.',
         'icon': 'Code2',
         'topics': ['React', 'JavaScript', 'Accessibility', 'Browser Rendering', 'State Management'],
     },
     {
-        'id': 'backend-engineer',
-        'name': 'Backend Engineer',
+        'id': 'backend-developer',
+        'name': 'Backend Developer',
         'category': 'Core Tech',
         'description': 'Design scalable services, APIs, data flows, and system resilience for production workloads.',
         'icon': 'Server',
         'topics': ['REST APIs', 'System Design', 'Databases', 'Concurrency', 'Scaling'],
+    },
+    {
+        'id': 'full-stack-developer',
+        'name': 'Full Stack Developer',
+        'category': 'Engineering',
+        'description': 'Ship end-to-end products by combining frontend experience, backend architecture, and operational thinking.',
+        'icon': 'Layers3',
+        'topics': ['System Design', 'APIs', 'Frontend Reliability', 'Backend Services', 'Testing'],
     },
     {
         'id': 'python-developer',
@@ -46,12 +54,52 @@ ROLES = [
         'topics': ['Python', 'Asyncio', 'FastAPI', 'Testing', 'Performance'],
     },
     {
+        'id': 'data-engineer',
+        'name': 'Data Engineer',
+        'category': 'Data & Analytics',
+        'description': 'Create reliable data pipelines, transformations, and analytics foundations for product decisions.',
+        'icon': 'BarChart3',
+        'topics': ['ETL', 'SQL', 'Data Modeling', 'Pipeline Design', 'Performance Tuning'],
+    },
+    {
         'id': 'product-manager',
         'name': 'Product Manager',
         'category': 'Behavioral',
         'description': 'Balance customer insight, roadmap trade-offs, and execution clarity across teams.',
         'icon': 'Layers',
         'topics': ['Product Strategy', 'Roadmaps', 'Metrics', 'Prioritization', 'Communication'],
+    },
+    {
+        'id': 'devops-engineer',
+        'name': 'DevOps Engineer',
+        'category': 'Infrastructure',
+        'description': 'Improve deployment reliability, observability, and automation to keep systems running smoothly.',
+        'icon': 'Cloud',
+        'topics': ['CI/CD', 'Containers', 'Monitoring', 'Infrastructure as Code', 'Incident Response'],
+    },
+    {
+        'id': 'qa-engineer',
+        'name': 'QA Engineer',
+        'category': 'Quality',
+        'description': 'Design plans that catch regressions early and improve product confidence across releases.',
+        'icon': 'ShieldCheck',
+        'topics': ['Test Strategy', 'Automation', 'Regression Coverage', 'Debugging', 'Quality Gates'],
+    },
+    {
+        'id': 'machine-learning-engineer',
+        'name': 'Machine Learning Engineer',
+        'category': 'AI & Data',
+        'description': 'Translate models and experiments into resilient, production-grade ML experiences.',
+        'icon': 'BrainCircuit',
+        'topics': ['ML Models', 'Feature Engineering', 'Model Evaluation', 'MLOps', 'Responsible AI'],
+    },
+    {
+        'id': 'security-engineer',
+        'name': 'Security Engineer',
+        'category': 'Security',
+        'description': 'Protect products and systems by designing secure architecture, detection, and response controls.',
+        'icon': 'Lock',
+        'topics': ['Authentication', 'Authorization', 'Threat Modeling', 'Vulnerability Management', 'Secure Design'],
     },
 ]
 
@@ -136,11 +184,44 @@ def make_question(index: int, topic: str) -> Dict[str, Any]:
     }
 
 
+def resolve_role_topics(job_role: str) -> List[str]:
+    normalized = job_role.lower()
+    for role in ROLES:
+        role_name = role['name'].lower()
+        if normalized in {role_name, role['id'].lower()}:
+            return role['topics']
+
+    if 'frontend' in normalized:
+        return ROLES[0]['topics']
+    if 'backend' in normalized:
+        return ROLES[1]['topics']
+    if 'python' in normalized:
+        return ROLES[3]['topics']
+    if 'data' in normalized:
+        return ROLES[4]['topics']
+    if 'product' in normalized:
+        return ROLES[5]['topics']
+
+    return [topic for role in ROLES for topic in role['topics']]
+
+
 def build_session(payload: SetupInterviewRequest) -> Dict[str, Any]:
-    topics = payload.topics or ROLES[0]['topics'][:3]
+    selected_topics = list(payload.topics or [])
+    role_topics = resolve_role_topics(payload.job_role)
+
+    if not selected_topics:
+        selected_topics = role_topics[: payload.num_questions]
+    else:
+        for topic in role_topics:
+            if topic not in selected_topics:
+                selected_topics.append(topic)
+            if len(selected_topics) >= payload.num_questions:
+                break
+
+    topics = selected_topics[: payload.num_questions]
     questions = [
         make_question(i + 1, topic)
-        for i, topic in enumerate(topics[: payload.num_questions])
+        for i, topic in enumerate(topics)
     ]
     session_id = f"int_{uuid.uuid4().hex[:10]}"
     session = {
@@ -236,6 +317,7 @@ def setup_interview(payload: SetupInterviewRequest):
 
 
 @app.post('/api/interviews/evaluate-answer')
+@app.post('/api/interviews/evaluate-single')
 def evaluate_answer(payload: EvaluateAnswerRequest):
     result = score_answer(payload.question, payload.user_answer)
     return {

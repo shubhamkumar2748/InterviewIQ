@@ -28,6 +28,16 @@ InterviewIQ is a full-stack AI mock interview platform designed for technical an
 - Linux/macOS: `./start.sh`
 - Windows: `start.bat`
 
+## GitHub Pages deployment
+
+The frontend is deployed to GitHub Pages from the `main` branch by the
+`.github/workflows/deploy-pages.yml` workflow. After pushing changes, enable
+GitHub Pages in the repository settings and select **GitHub Actions** as the
+build and deployment source.
+
+GitHub Pages hosts only the frontend. Features that call the FastAPI backend
+require a separately deployed backend and a configured API URL.
+
 ## Project structure
 
 - `Backend/` — API server
